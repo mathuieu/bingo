@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administration du bingo</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Georgia, serif;
+            background: #f4f0e6;
+            color: #20251f;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+        }
+
+        main {
+            width: min(92vw, 760px);
+            padding: 2rem;
+        }
+
+        h1, h2 { color: #1e5b4a; }
+
+        button, input {
+            font: inherit;
+            padding: 0.65rem 0.8rem;
+            border: 2px solid #1e5b4a;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #1e5b4a;
+            color: white;
+            cursor: pointer;
+        }
+
+        section {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border: 1px solid #b7c9bf;
+            border-radius: 6px;
+            background: #fffdf8;
+        }
+
+        .danger { background: #a22c2c; border-color: #a22c2c; }
+        .message { color: #1e5b4a; }
+        .erreur { color: #a22c2c; }
+        .retour { color: #1e5b4a; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.7rem;
+            border-bottom: 1px solid #b7c9bf;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .mots {
+            columns: 3 10rem;
+            padding-left: 1.2rem;
+        }
+
+        .mot-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            min-height: 2.2rem;
+            break-inside: avoid;
+        }
+
+        .mot-item:hover .supprimer-mot,
+        .mot-item:focus-within .supprimer-mot {
+            opacity: 1;
+        }
+
+        .supprimer-mot {
+            padding: 0.25rem 0.45rem;
+            border-color: #a22c2c;
+            background: transparent;
+            color: #a22c2c;
+            opacity: 0;
+            transition: opacity 150ms ease-in;
+        }
+
+        .supprimer-mot:hover,
+        .supprimer-mot:focus-visible {
+            background: #a22c2c;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Administration</h1>
+
+        {% if message %}
+            <p class="message">{{ message }}</p>
+        {% endif %}
+        {% if erreur %}
+            <p class="erreur">{{ erreur }}</p>
+        {% endif %}
+
+        <section>
+            <h2>Grilles créées : {{ grilles|length }}</h2>
+            {% if grilles %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Numéro</th>
+                            <th>Contenu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for numero, grille in grilles %}
+                            <tr>
+                                <td><a href="{{ url_for('accueil', numero=numero) }}">{{ numero }}</a></td>
+                                <td>
+                                    {% for ligne in grille %}
+                                        {{ ligne|join(" · ") }}{% if not loop.last %}<br>{% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Aucune grille créée.</p>
+            {% endif %}
+        </section>
+
+        <section>
+            <h2>Ajouter un mot</h2>
+            <form method="post" action="{{ url_for('administrer_mots') }}">
+                <label for="mot">Nouveau mot ou expression</label>
+                <input id="mot" name="mot" type="text" required>
+                <button type="submit">Ajouter</button>
+            </form>
+            <p>{{ mots|length }} mots disponibles</p>
+            <ul class="mots">
+                {% for mot in mots %}
+                    <li class="mot-item">
+                        <span>{{ mot }}</span>
+                        <form method="post" action="{{ url_for('supprimer_mot_admin') }}" onsubmit="return confirm('Supprimer ce mot ?');">
+                            <input type="hidden" name="mot" value="{{ mot }}">
+                            <button class="supprimer-mot" type="submit" title="Supprimer {{ mot }}" aria-label="Supprimer {{ mot }}">🗑</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Réinitialiser les grilles</h2>
+            <p>Cette action supprime toutes les grilles enregistrées.</p>
+            <form method="post" action="{{ url_for('reinitialiser_grilles') }}" onsubmit="return confirm('Supprimer toutes les grilles ?');">
+                <button class="danger" type="submit">Réinitialiser les grilles</button>
+            </form>
+        </section>
+
+        <a class="retour" href="{{ url_for('accueil') }}">Retour au bingo</a>
+    </main>
+</body>
+</html>

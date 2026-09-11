@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bingo</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Georgia, serif;
+            background: #f4f0e6;
+            color: #20251f;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+        }
+
+        main {
+            width: min(92vw, 620px);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        h1 { margin-top: 0; color: #1e5b4a; }
+
+        button, input {
+            font: inherit;
+            padding: 0.65rem 0.8rem;
+            border: 2px solid #1e5b4a;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #1e5b4a;
+            color: white;
+            cursor: pointer;
+        }
+
+        form { margin: 1rem 0; }
+        .choix { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .choix a { text-decoration: none; }
+        .retour { display: inline-block; margin-top: 1rem; color: #1e5b4a; }
+        .erreur { color: #a22c2c; }
+
+        table {
+            width: 100%;
+            margin-top: 1.5rem;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        td {
+            padding: 0;
+            border: 2px solid #1e5b4a;
+        }
+
+        .case {
+            width: 100%;
+            min-height: 5rem;
+            padding: 0.5rem;
+            border: 0;
+            border-radius: 0;
+            background: #fffdf8;
+            color: #20251f;
+            overflow-wrap: anywhere;
+        }
+
+        .case:hover,
+        .case:focus-visible {
+            background: #e0eee8;
+        }
+
+        .case.cochee {
+            background: #74c69d;
+            color: #123c2e;
+        }
+
+        .victoire {
+            position: fixed;
+            inset: 1rem 1rem auto;
+            z-index: 2;
+            padding: 1rem 1.5rem;
+            border: 3px solid #1e5b4a;
+            border-radius: 8px;
+            background: #fffdf8;
+            color: #1e5b4a;
+            box-shadow: 0 8px 24px rgb(32 37 31 / 20%);
+            text-align: center;
+            animation: apparition 400ms ease-out both;
+        }
+
+        .victoire[hidden] {
+            display: none;
+        }
+
+        .victoire button {
+            margin-top: 0.5rem;
+        }
+
+        .confetti {
+            position: fixed;
+            top: -1rem;
+            z-index: 3;
+            width: 0.65rem;
+            height: 1.1rem;
+            pointer-events: none;
+            animation: chute 1.8s ease-in forwards;
+        }
+
+        @keyframes apparition {
+            from { opacity: 0; transform: translateY(-1rem) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes chute {
+            to { transform: translate3d(var(--derive), 105vh, 0) rotate(720deg); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .victoire, .confetti { animation: none; }
+        }
+    </style>
+</head>
+<body>
+    <main data-numero="{{ numero or '' }}">
+        <h1>Bingo</h1>
+
+        {% if not mode and not grille and not erreur %}
+            <div class="choix">
+                <a href="{{ url_for('accueil', mode='creation') }}">
+                    <button type="button">➕ Nouvelle grille</button>
+                </a>
+                <a href="{{ url_for('accueil', mode='recherche') }}">
+                    <button type="button">🔍 Retrouver une grille</button>
+                </a>
+            </div>
+        {% elif mode == "creation" and not grille %}
+            <form method="post" action="{{ url_for('nouvelle_grille') }}">
+                <label for="numero-creation">Choisis ton numéro de grille</label>
+                <input id="numero-creation" name="numero" type="number" min="1" placeholder="Ex. 123" required>
+                <button type="submit">Créer la grille</button>
+            </form>
+            <a class="retour" href="{{ url_for('accueil') }}">Retour</a>
+        {% elif mode == "recherche" and not grille %}
+            <form method="get" action="{{ url_for('accueil') }}">
+                <input type="hidden" name="mode" value="recherche">
+                <label for="numero-recherche">Numéro de la grille</label>
+                <input id="numero-recherche" name="numero" type="number" min="1" value="{{ numero_saisi }}" required>
+                <button type="submit">Afficher</button>
+            </form>
+            <a class="retour" href="{{ url_for('accueil') }}">Retour</a>
+        {% endif %}
+
+        {% if erreur %}
+            <p class="erreur">{{ erreur }}</p>
+        {% endif %}
+
+        {% if grille %}
+            <h2>Grille n°{{ numero }}</h2>
+            <div class="victoire" id="victoire" role="status" hidden>
+                <strong>Bingo !</strong>
+                <br>
+                Ta grille est remplie.
+                <br>
+                <button id="relancer-fete" type="button">Relancer la fête</button>
+            </div>
+            <table>
+                {% set compteur_case = namespace(index=0) %}
+                {% for ligne in grille %}
+                    <tr>
+                        {% for mot in ligne %}
+                            <td>
+                                <button class="case{% if cases_cochees[compteur_case.index] %} cochee{% endif %}" type="button" aria-pressed="{{ 'true' if cases_cochees[compteur_case.index] else 'false' }}">{{ mot }}</button>
+                            </td>
+                            {% set compteur_case.index = compteur_case.index + 1 %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+            <a class="retour" href="{{ url_for('accueil') }}">Retour à l'accueil</a>
+        {% endif %}
+    </main>
+    <script>
+        const cases = [...document.querySelectorAll(".case")];
+        const numeroGrille = document.querySelector("main").dataset.numero;
+        const victoire = document.querySelector("#victoire");
+
+        function lancerCotillon() {
+            victoire.hidden = false;
+
+            for (let index = 0; index < 60; index += 1) {
+                const confetti = document.createElement("span");
+                confetti.className = "confetti";
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.setProperty("--derive", `${(Math.random() - 0.5) * 30}vw`);
+                confetti.style.backgroundColor = ["#e76f51", "#f4a261", "#e9c46a", "#2a9d8f", "#457b9d"][index % 5];
+                confetti.style.animationDelay = `${Math.random() * 350}ms`;
+                document.body.append(confetti);
+                confetti.addEventListener("animationend", () => confetti.remove());
+            }
+        }
+
+        function verifierVictoire() {
+            if (cases.length > 0 && cases.every((caseElement) => caseElement.classList.contains("cochee"))) {
+                lancerCotillon();
+            } else {
+                victoire.hidden = true;
+            }
+        }
+
+        async function sauvegarderCases() {
+            const etats = cases.map((caseElement) => caseElement.classList.contains("cochee"));
+            const reponse = await fetch(`/grilles/${numeroGrille}/cases`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cases: etats }),
+            });
+            if (!reponse.ok) {
+                throw new Error("Impossible de sauvegarder l'état de la grille.");
+            }
+        }
+
+        cases.forEach((caseElement) => {
+            caseElement.addEventListener("click", () => {
+                const cochee = caseElement.classList.toggle("cochee");
+                caseElement.setAttribute("aria-pressed", String(cochee));
+                sauvegarderCases().catch(() => {
+                    caseElement.classList.toggle("cochee");
+                    caseElement.setAttribute("aria-pressed", String(!cochee));
+                });
+                verifierVictoire();
+            });
+        });
+
+        document.querySelector("#relancer-fete")?.addEventListener("click", lancerCotillon);
+    </script>
+</body>
+</html>
