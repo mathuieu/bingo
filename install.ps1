@@ -8,11 +8,19 @@ param(
 	# Crée ou met à jour une Azure Container Instance après le push.
 	[switch]$DeployAci,
 
+	# Crée ou met à jour une Azure Web App depuis le dépôt GitHub.
+	[switch]$DeployWebApp,
+
 	# Paramètres nécessaires à la création de l'ACI.
 	[string]$ResourceGroup,
 	[string]$Location = "westeurope",
 	[string]$AciName = "bingo-aci",
-	[string]$DnsNameLabel
+	[string]$DnsNameLabel,
+	[string]$WebAppResourceGroup = "RG_demo_sudoku",
+	[string]$WebAppPlan = "B1-plan-multi",
+	[string]$WebAppName = "bingo-webapp",
+	[string]$GitHubRepository = "https://github.com/mathuieu/bingo",
+	[string]$GitHubBranch = "main"
 )
 
 $ErrorActionPreference = "Stop"
@@ -70,6 +78,70 @@ docker tag "bingo:local" $Image
 docker push $Image
 
 Write-Host "Image publiée : $Image" -ForegroundColor Green
+
+# -----------------------------------------------------------------------------
+# Déploiement optionnel dans Azure App Service (Web App)
+# -----------------------------------------------------------------------------
+if ($DeployWebApp) {
+	# Vérifie que le groupe de ressources et le plan Linux existent.
+	az group show --name $WebAppResourceGroup --output none
+	if ($LASTEXITCODE -ne 0) {
+		throw "Le groupe de ressources '$WebAppResourceGroup' est introuvable."
+	}
+
+	az appservice plan show `
+		--resource-group $WebAppResourceGroup `
+		--name $WebAppPlan `
+		--output none
+	if ($LASTEXITCODE -ne 0) {
+		throw "Le plan App Service '$WebAppPlan' est introuvable."
+	}
+
+	# Crée la Web App si elle n'existe pas encore.
+	az webapp show `
+		--resource-group $WebAppResourceGroup `
+		--name $WebAppName `
+		--output none 2>$null
+	if ($LASTEXITCODE -ne 0) {
+		az webapp create `
+			--resource-group $WebAppResourceGroup `
+			--plan $WebAppPlan `
+			--name $WebAppName `
+			--runtime "PYTHON:3.14" `
+			--output none
+	}
+
+	# Active le build Python côté App Service et utilise Gunicorn comme serveur.
+	az webapp config appsettings set `
+		--resource-group $WebAppResourceGroup `
+		--name $WebAppName `
+		--settings SCM_DO_BUILD_DURING_DEPLOYMENT=1 PORT=8000 `
+		--output none
+	az webapp config set `
+		--resource-group $WebAppResourceGroup `
+		--name $WebAppName `
+		--startup-file "gunicorn --bind=0.0.0.0:`$PORT app:app" `
+		--output none
+
+	# Configure GitHub comme source du code. L'intégration manuelle ne stocke
+	# aucun jeton GitHub dans ce script ; synchroniser ensuite avec 'az webapp
+	# deployment source sync' après chaque push, ou remplacer par une GitHub Action.
+	az webapp deployment source config `
+		--resource-group $WebAppResourceGroup `
+		--name $WebAppName `
+		--repo-url $GitHubRepository `
+		--branch $GitHubBranch `
+		--manual-integration `
+		--output none
+
+	$WebAppHost = az webapp show `
+		--resource-group $WebAppResourceGroup `
+		--name $WebAppName `
+		--query defaultHostName `
+		--output tsv
+	Write-Host "Web App créée : https://$WebAppHost" -ForegroundColor Green
+	Write-Host "Synchroniser le dépôt : az webapp deployment source sync --resource-group $WebAppResourceGroup --name $WebAppName" -ForegroundColor Yellow
+}
 
 # -----------------------------------------------------------------------------
 # Déploiement optionnel dans Azure Container Instances (ACI)
@@ -189,6 +261,20 @@ if ($Tester) {
 #
 # Construire, publier et lancer le test local :
 #   .\install.ps1 -Tester
+#
+# Publier puis déployer depuis GitHub dans Azure Web App :
+#   .\install.ps1 `
+#       -DeployWebApp `
+#       -WebAppResourceGroup "RG_demo_sudoku" `
+#       -WebAppPlan "B1-plan-multi" `
+#       -WebAppName "bingo-webapp" `
+#       -GitHubRepository "https://github.com/mathuieu/bingo" `
+#       -GitHubBranch "main"
+#
+# Synchroniser les prochains commits GitHub :
+#   az webapp deployment source sync `
+#       --resource-group "RG_demo_sudoku" `
+#       --name "bingo-webapp"
 #
 # Créer ou mettre à jour une Azure Container Instance :
 #   .\install.ps1 `
