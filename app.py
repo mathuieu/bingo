@@ -1,16 +1,51 @@
+import hmac
 import os
+import secrets
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, abort, redirect, render_template, request, session, url_for
 
 from grilles import GestionnaireGrilles
 from mots import ajouter_mot, charger_mots, supprimer_mot
 
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
+mot_de_passe = os.environ.get("APP_PASSWORD")
 gestionnaire = GestionnaireGrilles(
     charger_mots(),
     chemin_db=os.environ.get("DB_PATH", "grilles.db"),
 )
+
+
+@app.before_request
+def proteger_application():
+    if not mot_de_passe:
+        abort(500, description="La variable d'environnement APP_PASSWORD est absente.")
+    if request.endpoint not in {"connexion", "static"} and not session.get("authentifie"):
+        return redirect(url_for("connexion"))
+
+
+@app.route("/connexion", methods=["GET", "POST"])
+def connexion():
+    erreur = None
+    if request.method == "POST":
+        mot_de_passe_saisi = request.form.get("mot_de_passe", "")
+        if hmac.compare_digest(mot_de_passe_saisi, mot_de_passe):
+            session["authentifie"] = True
+            return redirect(url_for("accueil"))
+        erreur = "Mot de passe incorrect."
+
+    return render_template("connexion.html", erreur=erreur)
+
+
+@app.get("/deconnexion")
+def deconnexion():
+    session.clear()
+    return redirect(url_for("connexion"))
 
 
 @app.get("/")

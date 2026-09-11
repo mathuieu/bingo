@@ -25,6 +25,15 @@ Installer les dépendances :
 python -m pip install -r requirements.txt
 ```
 
+Définir le mot de passe privé avant de lancer l'application :
+
+```powershell
+$env:APP_PASSWORD = "mon-mot-de-passe"
+$env:SECRET_KEY = "une-cle-secrete-longue-et-aleatoire"
+```
+
+Ces valeurs restent dans l'environnement local et ne doivent pas être ajoutées à GitHub. Chaque clone du projet peut choisir son propre mot de passe.
+
 Lancer l'application :
 
 ```powershell
@@ -37,6 +46,8 @@ Ouvrir ensuite :
 - Administration : http://127.0.0.1:5000/admin
 
 Le serveur local utilise le port 5000 par défaut. Le port peut être changé avec la variable `PORT`.
+
+L'application demande le mot de passe sur `/connexion` avant d'autoriser l'accès au bingo et à l'administration. La session est supprimée avec **Se déconnecter**.
 
 ## Liste des mots
 

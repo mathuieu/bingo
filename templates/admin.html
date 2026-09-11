@@ -101,6 +101,7 @@
 <body>
     <main>
         <h1>Administration</h1>
+        <p><a class="retour" href="{{ url_for('deconnexion') }}">Se déconnecter</a></p>
 
         {% if message %}
             <p class="message">{{ message }}</p>

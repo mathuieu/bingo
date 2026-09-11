@@ -129,6 +129,8 @@
     <main data-numero="{{ numero or '' }}">
         <h1>Bingo</h1>
 
+        <p><a class="retour" href="{{ url_for('deconnexion') }}">Se déconnecter</a></p>
+
         {% if not mode and not grille and not erreur %}
             <div class="choix">
                 <a href="{{ url_for('accueil', mode='creation') }}">

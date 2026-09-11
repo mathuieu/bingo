@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Accès privé - Bingo</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Georgia, serif;
+            background: #f4f0e6;
+            color: #20251f;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+        }
+
+        main {
+            width: min(92vw, 420px);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        h1 { color: #1e5b4a; }
+
+        form {
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        input, button {
+            font: inherit;
+            padding: 0.7rem 0.8rem;
+            border: 2px solid #1e5b4a;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #1e5b4a;
+            color: white;
+            cursor: pointer;
+        }
+
+        .erreur { color: #a22c2c; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Bingo entre amis</h1>
+        <p>Cette partie est réservée aux amis.</p>
+        <form method="post" action="{{ url_for('connexion') }}">
+            <label for="mot-de-passe">Mot de passe</label>
+            <input id="mot-de-passe" name="mot_de_passe" type="password" autocomplete="current-password" required autofocus>
+            <button type="submit">Entrer</button>
+        </form>
+        {% if erreur %}
+            <p class="erreur">{{ erreur }}</p>
+        {% endif %}
+    </main>
+</body>
+</html>

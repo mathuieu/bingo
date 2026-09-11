@@ -83,6 +83,13 @@ Write-Host "Image publiée : $Image" -ForegroundColor Green
 # Déploiement optionnel dans Azure App Service (Web App)
 # -----------------------------------------------------------------------------
 if ($DeployWebApp) {
+	if ([string]::IsNullOrWhiteSpace($env:APP_PASSWORD)) {
+		throw "La variable d'environnement APP_PASSWORD est obligatoire avec -DeployWebApp."
+	}
+	if ([string]::IsNullOrWhiteSpace($env:SECRET_KEY)) {
+		throw "La variable d'environnement SECRET_KEY est obligatoire avec -DeployWebApp."
+	}
+
 	# Vérifie que le groupe de ressources et le plan Linux existent.
 	az group show --name $WebAppResourceGroup --output none
 	if ($LASTEXITCODE -ne 0) {
@@ -116,7 +123,7 @@ if ($DeployWebApp) {
 	az webapp config appsettings set `
 		--resource-group $WebAppResourceGroup `
 		--name $WebAppName `
-		--settings SCM_DO_BUILD_DURING_DEPLOYMENT=1 PORT=8000 `
+		--settings SCM_DO_BUILD_DURING_DEPLOYMENT=1 PORT=8000 APP_PASSWORD=$env:APP_PASSWORD SECRET_KEY=$env:SECRET_KEY `
 		--output none
 	az webapp config set `
 		--resource-group $WebAppResourceGroup `
@@ -264,6 +271,8 @@ if ($Tester) {
 #   .\install.ps1 -Tester
 #
 # Publier puis déployer depuis GitHub dans Azure Web App :
+#   $env:APP_PASSWORD = "mot-de-passe-prive"
+#   $env:SECRET_KEY = "cle-secrete-longue-et-aleatoire"
 #   .\install.ps1 `
 #       -DeployWebApp `
 #       -WebAppResourceGroup "RG_demo_sudoku" `
