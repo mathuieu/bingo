@@ -97,12 +97,13 @@ if ($DeployWebApp) {
 		throw "Le plan App Service '$WebAppPlan' est introuvable."
 	}
 
-	# Crée la Web App si elle n'existe pas encore.
-	az webapp show `
+	# Crée la Web App si elle n'existe pas encore. La liste évite qu'une
+	# erreur native de 'az webapp show' arrête PowerShell pour un nom absent.
+	$WebAppCount = az webapp list `
 		--resource-group $WebAppResourceGroup `
-		--name $WebAppName `
-		--output none 2>$null
-	if ($LASTEXITCODE -ne 0) {
+		--query "[?name=='$WebAppName'] | length(@)" `
+		--output tsv
+	if ($WebAppCount -eq "0") {
 		az webapp create `
 			--resource-group $WebAppResourceGroup `
 			--plan $WebAppPlan `
